@@ -1,0 +1,2 @@
+class ImageResolver:
+    pass
