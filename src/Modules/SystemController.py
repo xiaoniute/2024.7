@@ -10,11 +10,11 @@ class SystemController:
     resultWriter: ResultWriter
     imageResolver: ImageResolver
 
-    def __init__(self):
+    def __init__(self, config: dict):
         self.carController = CarController()
         self.plane = PlaneController()
         self.resultWriter = ResultWriter()
-        self.imageResolver = ImageResolver()
+        self.imageResolver = ImageResolver(config["modelPath"])
 
     def StartUp(self):
         raise NotImplementedError
