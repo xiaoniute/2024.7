@@ -1,0 +1,8 @@
+<launch>
+
+  <!-- Start the uavdata server -->
+  <node pkg="ttauav_node" type="uavdata" name="uavdata" respawn="true" output="screen">
+
+  </node>
+
+</launch>
