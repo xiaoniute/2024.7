@@ -11,13 +11,20 @@ class SystemController:
     imageResolver: ImageResolver
 
     def __init__(self, config: dict):
-        self.carController = CarController()
-        self.plane = PlaneController()
+        self.car = CarController()
+        self.plane = PlaneController(
+            config["plane-ip"],
+            config["plane-port"],
+            config["plane-username"],
+            config["plane-password"]
+        )
         self.resultWriter = ResultWriter()
         self.imageResolver = ImageResolver(config["model-path"])
 
     def StartUp(self):
-        raise NotImplementedError
+        self.car.StartUp()
+        self.plane.StartUp()
 
     def Shutdown(self):
-        raise NotImplementedError
+        self.plane.Shutdown()
+        self.car.Shutdown()

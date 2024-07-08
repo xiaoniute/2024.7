@@ -8,4 +8,7 @@ class CarController:
         self.radar = RadarResolver()
 
     def StartUp(self):
-        raise NotImplementedError
+        pass
+
+    def Shutdown(self):
+        pass
