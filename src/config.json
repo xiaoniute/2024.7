@@ -1,5 +1,9 @@
 {
-  "plane-ip": "192.168.1.1",
+  "plane-ip": "192.168.0.198",
+  "plane-port": 22,
+  "plane-username": "root",
+  "plane-password": "123456",
+
   "car-ip": "192.168.1.2",
   "model-path": "best.pt"
 }
