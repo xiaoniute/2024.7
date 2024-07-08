@@ -5,3 +5,6 @@ if __name__ == '__main__':
     config = ConfigHelper.LoadDictFromFile("config.json")
     systemController = SystemController(config)
     systemController.StartUp()
+    while input() != "exit":
+        pass
+    systemController.Shutdown()
