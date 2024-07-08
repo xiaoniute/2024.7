@@ -14,7 +14,7 @@ class SystemController:
         self.carController = CarController()
         self.plane = PlaneController()
         self.resultWriter = ResultWriter()
-        self.imageResolver = ImageResolver(config["modelPath"])
+        self.imageResolver = ImageResolver(config["model-path"])
 
     def StartUp(self):
         raise NotImplementedError
