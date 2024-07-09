@@ -1,6 +1,8 @@
 import time
+import subprocess
 
 import paramiko
+
 from Modules.CarSeeker import CarSeeker
 
 
@@ -11,12 +13,15 @@ class PlaneController:
     sftp: paramiko.SFTPClient
     sshConfig: dict
     threadList: list[paramiko.Channel]
+    cameraUrl: str
 
-    def __init__(self, ip: str, port: int, username: str, password: str):
+    def __init__(self, ip: str, port: int, username: str, password: str, cameraUrl: str):
         self.carSeeker = CarSeeker()
         self.client = paramiko.SSHClient()
+        self.sftp = None
         self.sshConfig = {"hostname": ip, "port": port, "username": username, "password": password}
         self.threadList = []
+        self.cameraUrl = cameraUrl
 
     def StartUp(self):
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -55,7 +60,13 @@ class PlaneController:
                     "&& source ./devel/setup.bash "
                     "&& rosrun ttauav_node service \n")  # 进程4: ROS 飞行控制服务
 
+        print("[PlaneController] INFO: RTSP 视频流连接中...")
+        thread, _ = self.CreateThread()
+        thread.send("cd /mnt "
+                    "&& ./venv/bin/python3 ./PlaneCameraService.py " + self.cameraUrl + "\n")  # 进程5: RTSP 视频流
+
     def Shutdown(self):
+        self.camera.Shutdown()
         if self.sftp:
             self.sftp.close()
         if self.client:
@@ -69,6 +80,9 @@ class PlaneController:
 
     def Move(self, way: tuple[int, int, int]) -> bool:
         raise NotImplementedError
+
+    def GrabPhoto(self, filePath: str) -> bool:
+        self.threadList[4].send("grab " + filePath + "\n")
 
     def DownloadFile(self, remoteFilePath: str, localFilePath: str) -> bool:
         try:
