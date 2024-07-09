@@ -66,7 +66,7 @@ class PlaneController:
                     "&& ./venv/bin/python3 ./PlaneCameraService.py " + self.cameraUrl + "\n")  # 进程5: RTSP 视频流
 
     def Shutdown(self):
-        self.camera.Shutdown()
+        self.threadList[4].send("exit\n")
         if self.sftp:
             self.sftp.close()
         if self.client:
