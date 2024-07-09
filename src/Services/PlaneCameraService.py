@@ -1,6 +1,5 @@
 import cv2
 import sys
-import time
 import queue
 from threading import Thread
 
@@ -38,7 +37,7 @@ class PlaneCamera:
     def Shutdown(self):
         self.isClosing = True
         self.status = False
-        time.sleep(1)
+        self.thread.join()
         if self.capture:
             self.capture.release()
 
