@@ -1,6 +1,6 @@
 def RoomManagerAndResultWriterTest():
-    from Modules.Entity.RoomManager import RoomManager
-    from Modules.ResultWriter import ResultWriter
+    from src.Entities.RoomManager import RoomManager
+    from src.Utils.ResultWriter import ResultWriter
     roomManager = RoomManager()
     for i in range(1, 4 + 1):
         for j in range(1, 4 + 1):
@@ -12,22 +12,16 @@ def RoomManagerAndResultWriterTest():
 
 
 def ConfigHelperTest():
-    from Modules.ConfigHelper import ConfigHelper
-    print(ConfigHelper.LoadDictFromFile("config.json"))
+    from src.Utils.JsonHelper import JsonHelper
+    print(JsonHelper.LoadDictFromFile("config.json"))
 
 
 def PlaneControllerTest():
-    from Modules.PlaneController import PlaneController
-    from Modules.ConfigHelper import ConfigHelper
+    from src.Controllers.PlaneController import PlaneController
+    from src.Utils.JsonHelper import JsonHelper
     import time
-    config = ConfigHelper.LoadDictFromFile("config.json")
-    planeController = PlaneController(
-        config["plane-ip"],
-        config["plane-port"],
-        config["plane-username"],
-        config["plane-password"],
-        config["plane-camera-format"]
-    )
+    config = JsonHelper.LoadDictFromFile("config.json")
+    planeController = PlaneController(config)
     planeController.StartUp()
 
     # 测试执行命令功能
