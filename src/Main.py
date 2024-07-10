@@ -1,8 +1,8 @@
-from Modules.SystemController import SystemController
-from Modules.ConfigHelper import ConfigHelper
+from Controllers.SystemController import SystemController
+from Utils.JsonHelper import JsonHelper
 
 if __name__ == '__main__':
-    config = ConfigHelper.LoadDictFromFile("config.json")
+    config = JsonHelper.LoadDictFromFile("config.json")
     systemController = SystemController(config)
     systemController.StartUp()
     while True:
