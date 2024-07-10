@@ -20,7 +20,8 @@ class SystemController:
             config["plane-port"],
             config["plane-username"],
             config["plane-password"],
-            config["plane-camera-url"]
+            config["plane-camera-url"],
+            config["timeout"]
         )
         self.resultWriter = ResultWriter()
         self.imageResolver = ImageResolver(config["model-path"])
@@ -39,11 +40,14 @@ class SystemController:
             if len(argv) != 2:
                 print("Usage: shot <filename>")
                 return False
-            self.plane.GrabPhoto(self.config["plane-photos-dir"] + argv[1])
-            time.sleep(3)
-            if self.plane.DownloadFile(self.config["plane-photos-dir"] + argv[1], argv[1]):
+            if self.plane.GrabPhoto(self.config["plane-photos-dir"] + argv[1]) \
+                    and self.plane.DownloadFile(self.config["plane-photos-dir"] + argv[1], argv[1]):
                 print("Shot Success")
                 return True
             else:
                 print("Shot Failed")
                 return False
+        elif argv[0] == "takeoff":
+            self.plane.TakeOff()
+        elif argv[0] == "landing":
+            self.plane.Landing()

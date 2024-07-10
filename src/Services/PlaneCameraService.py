@@ -54,10 +54,12 @@ if __name__ == "__main__":
         commands = command.split(" ")
         if commands[0] == "grab":
             if len(commands) != 2:
-                print("Usage: grab <file-path>")
+                print("[ER]")
                 continue
             status, frame = camera.GetFrame()
-            if status:
-                cv2.imwrite(commands[1], frame)
+            if status and cv2.imwrite(commands[1], frame):
+                print("[OK]")
+            else:
+                print("[ER]")
 
     camera.Shutdown()

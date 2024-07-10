@@ -1,10 +1,11 @@
 {
-  "plane-ip": "192.168.0.198",
+  "plane-ip": "192.168.31.46",
   "plane-port": 22,
   "plane-username": "root",
   "plane-password": "123456",
   "plane-camera-url": "rtsp://127.0.0.1:8554/live",
   "plane-photos-dir": "/mnt/photos/",
+  "timeout": 60,
   "car-ip": "192.168.1.2",
   "model-path": "best.pt"
 }

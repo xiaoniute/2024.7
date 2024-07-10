@@ -25,7 +25,8 @@ def PlaneControllerTest():
         config["plane-ip"],
         config["plane-port"],
         config["plane-username"],
-        config["plane-password"]
+        config["plane-password"],
+        config["plane-camera-format"]
     )
     planeController.StartUp()
 
