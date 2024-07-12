@@ -54,4 +54,4 @@ class SystemController:
                 print("Landing failed.")
                 return False
         elif argv[0] == "record":
-            self.plane.threadList[4].send("record\n")
+            self.plane.threadList[4].send(f"record {self.config['plane-photos-dir']}\n")
