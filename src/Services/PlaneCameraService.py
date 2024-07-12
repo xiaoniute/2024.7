@@ -22,7 +22,7 @@ class PlaneCamera:
         self.que = queue.Queue()
 
     def StartUp(self):
-        self.capture = cv2.VideoCapture(self.config["plane-camera-device-id"])
+        self.capture = cv2.VideoCapture(self.config["plane-camera-device-id"], cv2.CAP_DSHOW)
         self.thread.start()
 
     def Run(self):
@@ -33,21 +33,22 @@ class PlaneCamera:
                     self.que.get_nowait()
                 except queue.Empty:
                     pass
-            if self.config["plane-camera-show"]:
+            if self.status:
                 opt = cv2.resize(fr,
                                  dsize=(self.config["plane-camera-height"], self.config["plane-camera-width"]),
                                  fx=1,
                                  fy=1,
                                  interpolation=cv2.INTER_LINEAR
                                  )
-                cv2.imshow("plane-camera-show", opt)
-                cv2.resizeWindow(
-                    "plane-camera-show",
-                    self.config["plane-camera-height"],
-                    self.config["plane-camera-width"]
-                )
-                cv2.waitKey(self.delay)
-            self.que.put(fr)
+                self.que.put(opt)
+                if self.config["plane-camera-show"]:
+                    cv2.imshow("plane-camera-show", opt)
+                    cv2.resizeWindow(
+                        "plane-camera-show",
+                        self.config["plane-camera-height"],
+                        self.config["plane-camera-width"]
+                    )
+                    cv2.waitKey(self.delay)
 
     def Shutdown(self):
         self.isClosing = True
@@ -59,4 +60,7 @@ class PlaneCamera:
             self.capture.release()
 
     def GetFrame(self) -> tuple[bool, cv2.Mat]:
-        return self.status, self.que.get()
+        try:
+            return True, self.que.get()
+        except queue.Empty:
+            return False, None

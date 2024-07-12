@@ -1,4 +1,9 @@
 import time
+from threading import Thread
+
+import cv2
+from ultralytics import YOLO
+
 import paramiko
 from Services.PlaneCameraService import PlaneCamera
 
@@ -8,15 +13,23 @@ class PlaneController:
     client: paramiko.SSHClient
     sftp: paramiko.SFTPClient
     config: dict
+    controlThread: Thread
+    isClosing: bool
     threadList: list[paramiko.Channel]
     camera: PlaneCamera
+    model: YOLO
+    delay: int
 
     def __init__(self, config: dict):
         self.client = paramiko.SSHClient()
         self.sftp = None
         self.config = config
+        self.controlThread = Thread(target=self.Run, daemon=True)
+        self.isClosing = False
         self.threadList = []
         self.camera = PlaneCamera(config)
+        self.model = YOLO(config["target-detect-model-path"])
+        self.delay = 800 // config["plane-camera-fps"]
 
     def StartUp(self):
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -83,16 +96,20 @@ class PlaneController:
         print("[PlaneController] INFO: 服务启动完成.")
 
     def Shutdown(self):
-        self.threadList[4].send("exit\n")
+        self.isClosing = True
         self.camera.Shutdown()
+        self.controlThread.join()
         if self.sftp:
             self.sftp.close()
         if self.client:
             self.client.close()
 
     def ControlPlane(self, command: str):
-        self.threadList[5].send("rosrun ttauav_node service_client " + command + "\n")
-        print("注意：未检查飞机是否正确执行指令")
+        self.threadList[4].send("rosrun ttauav_node service_client " + command + "\n")
+        result = ""
+        while result != "result":
+            time.sleep(1)
+            result = self.threadList[4].recv(2048).decode('utf-8')[-37:-31]
         return True
 
     def Takeoff(self):
@@ -129,3 +146,21 @@ class PlaneController:
         channel = self.client.invoke_shell()
         self.threadList.append(channel)
         return channel, len(self.threadList) - 1
+
+    def Work(self):
+        self.controlThread.start()
+
+    def Run(self):
+        while not self.isClosing:
+            status, frame = self.camera.GetFrame()
+            if status:
+                results = self.model.predict(frame, verbose=False)
+                annotatedFrame = results[0].plot()
+                if self.config["plane-camera-detect-show"]:
+                    cv2.imshow("plane-camera-detect-show", annotatedFrame)
+                    cv2.resizeWindow(
+                        "plane-camera-detect-show",
+                        self.config["plane-camera-height"],
+                        self.config["plane-camera-width"]
+                    )
+                    cv2.waitKey(self.delay)

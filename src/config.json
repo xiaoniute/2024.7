@@ -9,14 +9,15 @@
   "plane-password": "123456",
   "plane-camera-device-id": 1,
   "plane-camera-show": true,
-  "plane-camera-height": 1280,
-  "plane-camera-width": 720,
+  "target-detect-model-path": "..\\models\\model.pt",
+  "plane-camera-detect-show": true,
+  "plane-camera-height": 640,
+  "plane-camera-width": 360,
   "plane-camera-fps": 60,
   "car-enabled": false,
   "car-ip": "192.168.1.2",
   "dataset-config-path": "..\\datasets\\person\\person.yaml",
   "training-epoch": 50,
   "training-batch": 0.8,
-  "pretraining-model-path": "yolov8m.pt",
-  "model-path": "..\\models\\model.pt"
+  "pretraining-model-path": "yolov8m.pt"
 }

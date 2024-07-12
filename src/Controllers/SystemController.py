@@ -1,6 +1,5 @@
 from Controllers.CarController import CarController
 from Controllers.PlaneController import PlaneController
-import datetime
 
 
 class SystemController:
@@ -27,18 +26,8 @@ class SystemController:
 
     def ExecuteCommand(self, command: str) -> bool:
         argv = command.split(" ")
-        if argv[0] == "takephoto":
-            if len(argv) == 1:
-                argv.append(datetime.datetime.now().strftime("%Y%m%d%H%M%S") + ".jpg")
-            if (
-                    self.plane.TakePhoto(self.config["plane-photos-dir"] + argv[1]) and
-                    self.plane.DownloadFile(self.config["plane-photos-dir"] + argv[1], argv[1])
-            ):
-                print("Taking photo succeeded.")
-                return True
-            else:
-                print("Taking photo failed.")
-                return False
+        if argv[0] == "work":
+            self.plane.Work()
         elif argv[0] == "takeoff":
             if self.plane.Takeoff():
                 print("Takeoff succeeded.")
