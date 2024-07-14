@@ -8,7 +8,7 @@ def RoomManagerAndResultWriterTest():
 
     dt = roomManager.ToDict()
     print(dt)
-    assert ResultWriter.WriteDictToFile(dt, "test.xlsx")
+    assert ResultWriter.WriteDictToFile(dt, "test.xlsx") 
 
 
 def ConfigHelperTest():
@@ -48,7 +48,22 @@ def PlaneControllerTest():
     planeController.Shutdown()
 
 
+def CarControllerTest():
+    from Controllers.CarController import CarController
+    #from src.Utils.JsonHelper import JsonHelper
+    import json
+
+    with open(r"D:\2024.7\src\config.json", "r") as f:  
+        config = json.load(f)
+    # config = JsonHelper.LoadDictFromFile("config.json")
+    carController = CarController(config)
+    carController.StartUp()
+
+   #carController.Shutdown()
+
 if __name__ == "__main__":
-    RoomManagerAndResultWriterTest()
-    ConfigHelperTest()
-    PlaneControllerTest()
+    #RoomManagerAndResultWriterTest()
+    #ConfigHelperTest()
+    #PlaneControllerTest()
+    CarControllerTest()
+
