@@ -44,3 +44,5 @@ class SystemController:
                 return False
         elif argv[0] == "record":
             self.plane.threadList[4].send(f"record {self.config['plane-photos-dir']}\n")
+        elif argv[0] == 'next':
+            self.car.NextPoint()
