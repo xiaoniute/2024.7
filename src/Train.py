@@ -8,7 +8,5 @@ if __name__ == "__main__":
     model.train(data=config["dataset-config-path"],
                 epochs=config["training-epoch"],
                 batch=config["training-batch"],
-                val=False,
                 amp=False
                 )
-    model.save(config["model-path"])

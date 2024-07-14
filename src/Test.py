@@ -1,6 +1,6 @@
 def RoomManagerAndResultWriterTest():
-    from src.Entities.RoomManager import RoomManager
-    from src.Utils.ResultWriter import ResultWriter
+    from Entities.RoomManager import RoomManager
+    from Utils.ResultWriter import ResultWriter
     roomManager = RoomManager()
     for i in range(1, 4 + 1):
         for j in range(1, 4 + 1):
@@ -8,17 +8,17 @@ def RoomManagerAndResultWriterTest():
 
     dt = roomManager.ToDict()
     print(dt)
-    assert ResultWriter.WriteDictToFile(dt, "test.xlsx") 
+    assert ResultWriter.WriteDictToFile(dt, "test.xlsx")
 
 
 def ConfigHelperTest():
-    from src.Utils.JsonHelper import JsonHelper
+    from Utils.JsonHelper import JsonHelper
     print(JsonHelper.LoadDictFromFile("config.json"))
 
 
 def PlaneControllerTest():
-    from src.Controllers.PlaneController import PlaneController
-    from src.Utils.JsonHelper import JsonHelper
+    from Controllers.PlaneController import PlaneController
+    from Utils.JsonHelper import JsonHelper
     import time
     config = JsonHelper.LoadDictFromFile("config.json")
     planeController = PlaneController(config)
@@ -48,22 +48,49 @@ def PlaneControllerTest():
     planeController.Shutdown()
 
 
+def ModelTest():
+    import cv2
+    from ultralytics import YOLO
+    from Utils.JsonHelper import JsonHelper
+    config = JsonHelper.LoadDictFromFile("config.json")
+    model = YOLO(config["model-path"])
+    video_path = "test.mp4"
+    cap = cv2.VideoCapture(video_path)
+    frameRate = cap.get(cv2.CAP_PROP_FPS)
+    frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    out = cv2.VideoWriter(
+        'test-result.mp4',
+        cv2.VideoWriter_fourcc(*'mp4v'),
+        frameRate,
+        (frameWidth, frameHeight)
+    )
+    while cap.isOpened():
+        success, frame = cap.read()
+        if success:
+            results = model.predict(frame)
+            annotatedFrame = results[0].plot()
+            cv2.imshow("frame", annotatedFrame)
+            out.write(annotatedFrame)
+        else:
+            break
+    cap.release()
+    out.release()
+
+
 def CarControllerTest():
     from Controllers.CarController import CarController
-    #from src.Utils.JsonHelper import JsonHelper
     import json
 
-    with open(r"D:\2024.7\src\config.json", "r") as f:  
+    with open(r"D:\2024.7\src\config.json", "r") as f:
         config = json.load(f)
-    # config = JsonHelper.LoadDictFromFile("config.json")
     carController = CarController(config)
     carController.StartUp()
 
-   #carController.Shutdown()
 
 if __name__ == "__main__":
-    #RoomManagerAndResultWriterTest()
-    #ConfigHelperTest()
-    #PlaneControllerTest()
-    CarControllerTest()
-
+    # RoomManagerAndResultWriterTest()
+    # ConfigHelperTest()
+    # PlaneControllerTest()
+    # CarControllerTest()
+    ModelTest()

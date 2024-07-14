@@ -1,9 +1,0 @@
-float32 pitch
-
-float32 roll
-
-float32 yaw
-
----
-
-int8 ack

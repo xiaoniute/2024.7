@@ -2,7 +2,7 @@
   "timeout": 60,
   "result-path": "/tta/",
   "result-name": "list_of_goods.xlsx",
-  "plane-enabled": false,
+  "plane-enabled": true,
   "plane-ip": "192.168.31.46",
   "plane-port": 22,
   "plane-username": "root",
