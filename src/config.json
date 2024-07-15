@@ -9,11 +9,40 @@
   "plane-password": "123456",
   "plane-camera-device-id": 1,
   "plane-camera-show": true,
-  "target-detect-model-path": "..\\models\\model.pt",
   "plane-camera-detect-show": true,
   "plane-camera-height": 640,
   "plane-camera-width": 360,
   "plane-camera-fps": 60,
+  "plane-aruco-size": 0.05,
+  "plane-aruco-show": true,
+  "plane-aruco-id": 114,
+  "plane-aruco-dictionary": "DICT_6X6_250",
+  "plane-camera-matrix": [
+    [
+      1861.62247,
+      0.0,
+      305.037003
+    ],
+    [
+      0.0,
+      695.193604,
+      173.080877
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "plane-camera-dist-coefficients": [
+    [
+      15.0096121,
+      -1870.11422,
+      0.00870781374,
+      -0.203124224,
+      -22178.2910
+    ]
+  ],
   "car-enabled": true,
   "car-ip": "192.168.31.2",
   "car-port": 22,
@@ -22,6 +51,8 @@
   "car-control-ip": "192.168.42.2",
   "car-control-port": 40923,
   "car-route-json": "car-route.json",
+  "target-detect-model-path": "..\\models\\model.pt",
+  "target-detect-confidence": 0.88,
   "dataset-config-path": "..\\datasets\\person\\person.yaml",
   "training-epoch": 50,
   "training-batch": 0.8,

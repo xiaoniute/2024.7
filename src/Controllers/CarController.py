@@ -6,16 +6,26 @@ from Utils.JsonHelper import JsonHelper
 # noinspection PyTypeChecker
 class CarController:
     client: paramiko.SSHClient
-    config: dict
     sftp: paramiko.SFTPClient
+    sshConfig: tuple[str, int, str, str]
+    ControlConfig: tuple[str, int]
     route: list[str]
     phase: int
     threadList: list[paramiko.Channel]
 
     def __init__(self, config: dict):
         self.client = paramiko.SSHClient()
-        self.config = config
         self.sftp = None
+        self.sshConfig = (
+            config["car-ip"],
+            config["car-port"],
+            config["car-username"],
+            config["car-password"]
+        )
+        self.ControlConfig = (
+            config['car-control-ip'],
+            config['car-control-port']
+        )
         self.threadList = []
         self.phase = 0
         self.route = []
@@ -25,12 +35,7 @@ class CarController:
 
     def StartUp(self):
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.client.connect(
-            self.config["car-ip"],
-            self.config["car-port"],
-            self.config["car-username"],
-            self.config["car-password"]
-        )
+        self.client.connect(*self.sshConfig)
         self.sftp = self.client.open_sftp()
 
         # 启动后台进程
@@ -38,7 +43,7 @@ class CarController:
         thread, _ = self.CreateThread()
         thread.send("cd /home/tta/Documents/ && "
                     "python ./CarControlService.py "
-                    f"{self.config['car-control-ip']} {self.config['car-control-port']} \n")  # 进程1: 连接车辆控制服务
+                    "{} {} \n".format(*self.ControlConfig))  # 进程1: 连接车辆控制服务
         print("完成!")
 
     def Shutdown(self):

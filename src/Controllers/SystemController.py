@@ -3,25 +3,27 @@ from Controllers.PlaneController import PlaneController
 
 
 class SystemController:
-    config: dict
+    enableCar: bool
+    enablePlane: bool
     car: CarController
     plane: PlaneController
 
     def __init__(self, config: dict):
-        self.config = config
+        self.enableCar = config["car-enabled"]
+        self.enablePlane = config["plane-enabled"]
         self.car = CarController(config)
         self.plane = PlaneController(config)
 
     def StartUp(self):
-        if self.config["car-enabled"]:
+        if self.enableCar:
             self.car.StartUp()
-        if self.config["plane-enabled"]:
+        if self.enablePlane:
             self.plane.StartUp()
 
     def Shutdown(self):
-        if self.config["plane-enabled"]:
+        if self.enablePlane:
             self.plane.Shutdown()
-        if self.config["car-enabled"]:
+        if self.enableCar:
             self.car.Shutdown()
 
     def ExecuteCommand(self, command: str) -> bool:
@@ -42,7 +44,5 @@ class SystemController:
             else:
                 print("Landing failed.")
                 return False
-        elif argv[0] == "record":
-            self.plane.threadList[4].send(f"record {self.config['plane-photos-dir']}\n")
         elif argv[0] == 'next':
             self.car.NextPoint()
