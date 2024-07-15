@@ -13,14 +13,14 @@ def RoomManagerAndResultWriterTest():
 
 def ConfigHelperTest():
     from Utils.JsonHelper import JsonHelper
-    print(JsonHelper.LoadDictFromFile("config.json"))
+    print(JsonHelper.LoadDictFromFile("../configs/config.json"))
 
 
 def PlaneControllerTest():
     from Controllers.PlaneController import PlaneController
     from Utils.JsonHelper import JsonHelper
     import time
-    config = JsonHelper.LoadDictFromFile("config.json")
+    config = JsonHelper.LoadDictFromFile("../configs/config.json")
     planeController = PlaneController(config)
     planeController.StartUp()
 
@@ -52,7 +52,7 @@ def ModelTest():
     import cv2
     from ultralytics import YOLO
     from Utils.JsonHelper import JsonHelper
-    config = JsonHelper.LoadDictFromFile("config.json")
+    config = JsonHelper.LoadDictFromFile("../configs/config.json")
     model = YOLO(config["model-path"])
     video_path = "test.mp4"
     cap = cv2.VideoCapture(video_path)

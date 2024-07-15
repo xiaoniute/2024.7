@@ -1,5 +1,8 @@
+from typing import Union, Any
+
 import cv2
 import numpy
+from numpy import ndarray
 
 
 class ArucoDetector:
@@ -23,7 +26,7 @@ class ArucoDetector:
         self.showResult = config["plane-aruco-show"]
         self.delay = 800 // config["plane-camera-fps"]
 
-    def Detect(self, image: cv2.Mat):
+    def Detect(self, image: cv2.Mat) -> Union[tuple[Union[ndarray, Any], Union[ndarray, Any]], tuple[None, None]]:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = self.detector.detectMarkers(gray)
         if ids is not None and len(ids) > 0:

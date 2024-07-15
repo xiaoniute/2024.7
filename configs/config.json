@@ -50,10 +50,10 @@
   "car-password": "123456",
   "car-control-ip": "192.168.42.2",
   "car-control-port": 40923,
-  "car-route-json": "car-route.json",
-  "target-detect-model-path": "..\\models\\model.pt",
+  "car-route-json": "../configs/car-route.json",
+  "target-detect-model-path": "../models/model.pt",
   "target-detect-confidence": 0.88,
-  "dataset-config-path": "..\\datasets\\person\\person.yaml",
+  "dataset-config-path": "../datasets/person/person.yaml",
   "training-epoch": 50,
   "training-batch": 0.8,
   "pretraining-model-path": "yolov8m.pt"
