@@ -7,7 +7,13 @@
       "port": 22,
       "username": "root",
       "password": "123456",
-      "threshold": 10.0,
+      "move-factor": 0.2,
+      "delay": 5,
+      "threshold": {
+        "yaw": 0,
+        "pos": 0,
+        "relative": 0.05
+      },
       "camera": {
         "show": true,
         "device-id": 1,

@@ -1,7 +1,8 @@
 import time
 from typing import Union
 
-import numpy
+import numpy as np
+import math
 import paramiko
 from Services.PlaneCameraService import PlaneCamera
 from Entities.ArucoDetector import ArucoDetector
@@ -15,7 +16,10 @@ class PlaneController:
     sshConfig: tuple[str, int, str, str]
     threadList: list[paramiko.Channel]
     timeout: int
-    threshold: float
+    threshold: dict[str, float]
+    curYaw: float
+    moveFactor: float
+    delay: float
     camera: PlaneCamera
     arucoDetector: ArucoDetector
     targetDetector: TargetDetector
@@ -33,11 +37,14 @@ class PlaneController:
         self.threadList = []
         self.timeout = config["timeout"]
         self.threshold = config["threshold"]
+        self.curYaw = 0.
+        self.moveFactor = config["move-factor"]
+        self.delay = config["delay"]
         self.camera = PlaneCamera(config["camera"])
         self.arucoDetector = ArucoDetector(
             config["aruco"],
-            numpy.array(config["camera"]["matrix"]),
-            numpy.array(config["camera"]["distortion"])
+            np.array(config["camera"]["matrix"]),
+            np.array(config["camera"]["distortion"])
         )
         self.targetDetector = TargetDetector(config["target"])
 
@@ -116,6 +123,7 @@ class PlaneController:
             self.client.close()
 
     def ControlPlane(self, command: str):
+        print(f"rosrun ttauav_node service_client {command}")
         self.threadList[4].send(f"rosrun ttauav_node service_client {command} \n".encode('utf-8'))
         result = ""
         t = time.time()
@@ -124,31 +132,58 @@ class PlaneController:
             result = self.threadList[4].recv(2048).decode('utf-8')
             if time.time() - t > self.timeout:
                 raise RuntimeError("[PlaneController] 获取飞机执行命令回执超时.")
+        time.sleep(self.delay)
         return True
 
     def Takeoff(self):
-        return self.ControlPlane("1")
+        self.ControlPlane("1")
+        self.Rotate(0)
 
     def Landing(self):
         return self.ControlPlane("2")
 
+    def Rotate(self, degree: float = 0):
+        yawThreshold = self.threshold["yaw"]
+        posThreshold = self.threshold["pos"]
+        self.curYaw = degree
+        self.ControlPlane(f"3 {degree} 0 0 0 {yawThreshold} {posThreshold}")
+
+    def MoveOneStep(self, way: str, tim: float):
+        print(f"[MoveOneStep] way={way} tim={tim}")
+        speed = self.moveFactor
+        if tim < 0:
+            tim = -tim
+            speed = -speed
+        tim = int(tim)
+        if way == "x":
+            self.ControlPlane(f"4 0 {speed} 0 0 {tim}")
+        elif way == "y":
+            self.ControlPlane(f"4 0 0 {speed} 0 {tim}")
+        elif way == "z":
+            self.ControlPlane(f"4 0 0 0 {speed} {tim}")
+        time.sleep(tim / 1000)
+
     def Move(self, x: float = 0, y: float = 0, z: float = 0):
         # 单位：m
-        if x != 0.0:
-            self.ControlPlane(f"4 {x / 3} 0 0")
-        if y != 0.0:
-            self.ControlPlane(f"4 0 {y / 3} 0")
-        # if z != 0.0:
-        #     self.ControlPlane(f"4 0 0 {z / 3}")
+        if False:
+            x, y, z = x / self.moveFactor, y / self.moveFactor, z * self.moveFactor
+        deg = math.radians(self.curYaw)
+        print(f"[Move] x'={x} y'={y}")
+        if abs(x) > 1e-3:
+            x_, y_ = x * math.cos(deg), x * math.sin(deg)
+            print(f"[Move] x = {x_} y={y_}")
+            self.MoveOneStep("x", x_ / self.moveFactor * 1000)
+            self.MoveOneStep("y", y_ / self.moveFactor * 1000)
+        if abs(y) > 1e-3:
+            x_, y_ = -y * math.sin(deg), y * math.cos(deg)
+            print(f"[Move] x = {x_} y={y_}")
+            self.MoveOneStep("x", x_ / self.moveFactor * 1000)
+            self.MoveOneStep("y", y_ / self.moveFactor * 1000)
+        if abs(z) > 1e-3:
+            self.MoveOneStep("z", z / self.moveFactor * 1000)
 
     def RotateCamera(self, pitch: int = 0, roll: int = 0, yaw: int = 0):
         return self.ControlPlane(f"5 {pitch} {roll} {yaw}")
-
-    def SyncWithCar(self):
-        self.RotateCamera(pitch=-90)
-        status, frame = self.camera.GetFrame()
-        if status:
-            rotationAngle, translationVector = self.arucoDetector.Detect(frame)
 
     def DownloadFile(self, remoteFilePath: str, localFilePath: str) -> bool:
         try:
@@ -178,3 +213,42 @@ class PlaneController:
         channel = self.client.invoke_shell()
         self.threadList.append(channel)
         return channel, len(self.threadList) - 1
+
+    def FollowCar(self, targetHeight: float = 0):
+        # 单位 : m
+        self.RotateCamera(-90, 0, 0)
+        status, frame = self.camera.GetFrame()
+        if status:
+            rotationAngle, translationVector = self.arucoDetector.Detect(frame)
+            x, y, _ = translationVector
+            x, y = -y, x
+            self.curYaw = self.curYaw + rotationAngle
+            if self.curYaw > 180:
+                self.curYaw = self.curYaw - 360
+            if self.curYaw <= -180:
+                self.curYaw = self.curYaw + 360
+            self.Rotate(self.curYaw)
+            while abs(x) > self.threshold["relative"] or abs(y) > self.threshold["relative"]:
+                while abs(x) > self.threshold["relative"]:
+                    self.Move(x=x)
+                    status, frame = self.camera.GetFrame()
+                    _, translationVector = self.arucoDetector.Detect(frame)
+                    x, y, _ = translationVector
+                    x, y = -y, x
+                while abs(y) > self.threshold["relative"]:
+                    self.Move(y=y)
+                    status, frame = self.camera.GetFrame()
+                    _, translationVector = self.arucoDetector.Detect(frame)
+                    x, y, _ = translationVector
+                    x, y = -y, x
+
+            if abs(targetHeight) > 1e-3:
+                _, translationVector = self.arucoDetector.Detect(frame)
+                _, _, z = translationVector
+                while abs(z - targetHeight) > self.threshold["relative"]:
+                    status, frame = self.camera.GetFrame()
+                    _, translationVector = self.arucoDetector.Detect(frame)
+                    _, _, z = translationVector
+                    self.Move(z=z - targetHeight)
+
+            self.RotateCamera(90, 0, 0)
