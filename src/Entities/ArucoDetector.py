@@ -1,20 +1,19 @@
 from typing import Union, Any
 
 import cv2
-import numpy
-from numpy import ndarray
+import numpy as np
 
 
 class ArucoDetector:
-    cameraMatrix: numpy.array
-    distortion: numpy.array
+    cameraMatrix: np.array
+    distortion: np.array
     detector: cv2.aruco.ArucoDetector
     coefficients: list[float]
     targetID: int
     showResult: bool
     markerSize: float
 
-    def __init__(self, config: dict, cameraMatrix: numpy.array, distortion: numpy.array):
+    def __init__(self, config: dict, cameraMatrix: np.array, distortion: np.array):
         self.cameraMatrix = cameraMatrix
         self.distortion = distortion
         self.detector = cv2.aruco.ArucoDetector(
@@ -26,7 +25,28 @@ class ArucoDetector:
         self.showResult = config["show"]
         self.coefficients = config["coefficients"]
 
-    def Detect(self, image: cv2.Mat) -> Union[tuple[Union[ndarray, Any], Union[ndarray, Any]], tuple[None, None]]:
+    @staticmethod
+    def GetAngle(corners: np.array) -> float:
+        x1, y1 = corners[0]
+        x2, y2 = corners[1]
+        x3, y3 = corners[2]
+        x4, y4 = corners[3]
+        if y1 - y4 == 0:
+            angle1 = np.pi / 2 if x1 > x4 else -np.pi / 2
+        else:
+            angle1 = -np.arctan((x1 - x4) / (y1 - y4))
+        if y2 - y3 == 0:
+            angle2 = np.pi / 2 if x2 > x3 else -np.pi / 2
+        else:
+            angle2 = -np.arctan((x2 - x3) / (y2 - y3))
+        angle = (angle1 + angle2) / 2
+        if y2 > y3:
+            angle = angle + np.pi
+        if angle > np.pi:
+            angle = angle - 2 * np.pi
+        return np.degrees(angle)
+
+    def Detect(self, image: cv2.Mat) -> Union[tuple[Union[np.ndarray, Any], Union[np.ndarray, Any]], tuple[None, None]]:
         """
         :param image: 需要检测的图像
         :return: 检测到的图像旋转向量，平移向量（单位:cm）
@@ -37,13 +57,14 @@ class ArucoDetector:
             for i in range(len(ids)):
                 if ids[i][0] != self.targetID:
                     continue
-                success, rotationVector, translationVector = cv2.solvePnP(
-                    numpy.array(
+                rotationAngle = self.GetAngle(corners[i][0])
+                success, _, translationVector = cv2.solvePnP(
+                    np.array(
                         [[-self.markerSize / 2, self.markerSize / 2, 0],
                          [self.markerSize / 2, self.markerSize / 2, 0],
                          [self.markerSize / 2, -self.markerSize / 2, 0],
                          [-self.markerSize / 2, -self.markerSize / 2, 0]],
-                        dtype=numpy.float32
+                        dtype=np.float32
                     ),
                     corners[i],
                     self.cameraMatrix,
@@ -56,7 +77,7 @@ class ArucoDetector:
                         img = cv2.aruco.drawDetectedMarkers(image, corners)
                         cv2.imshow("plane-aruco-show", img)
                         cv2.waitKey(1)
-                    return rotationVector, translationVector
+                    return rotationAngle, translationVector
                 else:
                     return None, None
 

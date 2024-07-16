@@ -63,8 +63,8 @@ class PlaneController:
         t = time.time()
         while True:
             time.sleep(1)
-            result = thread.recv(128).decode('utf-8')[-11:-2]
-            if result == "[/rosout]":
+            result = thread.recv(128).decode('utf-8')
+            if "[/rosout]" in result:
                 break
             if time.time() - t > self.timeout:
                 raise RuntimeError("[PlaneController] 启动ROS Core超时.")
@@ -85,8 +85,8 @@ class PlaneController:
         t = time.time()
         while True:
             time.sleep(1)
-            result = thread.recv(1024).decode('utf-8')[-26:-6]
-            if result == "gimbalControl server":
+            result = thread.recv(1024).decode('utf-8')
+            if "gimbalControl server" in result:
                 break
             if time.time() - t > self.timeout:
                 raise RuntimeError("[PlaneController] 启动飞行控制服务超时.")
@@ -119,9 +119,9 @@ class PlaneController:
         self.threadList[4].send(f"rosrun ttauav_node service_client {command} \n".encode('utf-8'))
         result = ""
         t = time.time()
-        while result != "result":
+        while "result" not in result:
             time.sleep(1)
-            result = self.threadList[4].recv(2048).decode('utf-8')[-37:-31]
+            result = self.threadList[4].recv(2048).decode('utf-8')
             if time.time() - t > self.timeout:
                 raise RuntimeError("[PlaneController] 获取飞机执行命令回执超时.")
         return True
@@ -141,18 +141,14 @@ class PlaneController:
         # if z != 0.0:
         #     self.ControlPlane(f"4 0 0 {z / 3}")
 
-    def RotateCamera(self, degree: int):
-        return self.ControlPlane(f"5 {degree}")
+    def RotateCamera(self, pitch: int = 0, roll: int = 0, yaw: int = 0):
+        return self.ControlPlane(f"5 {pitch} {roll} {yaw}")
 
     def SyncWithCar(self):
-        self.RotateCamera(-90)
-        x, y = (self.threshold + 10, self.threshold + 10)
-        while abs(x) > self.threshold or abs(y) > self.threshold:
-            status, frame = self.camera.GetFrame()
-            _, translationVector = self.arucoDetector.Detect(frame)
-            x, y, _ = translationVector
-            print(x, y, _)
-            self.Move(-y / 100, x / 100)
+        self.RotateCamera(pitch=-90)
+        status, frame = self.camera.GetFrame()
+        if status:
+            rotationAngle, translationVector = self.arucoDetector.Detect(frame)
 
     def DownloadFile(self, remoteFilePath: str, localFilePath: str) -> bool:
         try:
