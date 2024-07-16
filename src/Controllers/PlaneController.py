@@ -1,50 +1,50 @@
 import time
-from threading import Thread
 from typing import Union
 
-import cv2
-from ultralytics import YOLO
-
+import numpy
 import paramiko
 from Services.PlaneCameraService import PlaneCamera
+from Entities.ArucoDetector import ArucoDetector
+from Entities.TargetDetector import TargetDetector
 
 
 class PlaneController:
+    enabled: bool
     client: paramiko.SSHClient
     sftp: Union[paramiko.SFTPClient, None]
     sshConfig: tuple[str, int, str, str]
-    controlThread: Thread
-    isClosing: bool
     threadList: list[paramiko.Channel]
-    camera: PlaneCamera
-    model: YOLO
     timeout: int
-    delay: int
-    showDetect: bool
-    size: tuple[int, int]
-    targetConfidence: float
+    threshold: float
+    camera: PlaneCamera
+    arucoDetector: ArucoDetector
+    targetDetector: TargetDetector
 
     def __init__(self, config: dict):
+        self.enabled = config["enabled"]
         self.client = paramiko.SSHClient()
         self.sftp = None
         self.sshConfig = (
-            config["plane-ip"],
-            config["plane-port"],
-            config["plane-username"],
-            config["plane-password"]
+            config["ip"],
+            config["port"],
+            config["username"],
+            config["password"]
         )
-        self.controlThread = Thread(target=self.Run, daemon=True)
-        self.isClosing = False
         self.threadList = []
-        self.camera = PlaneCamera(config)
-        self.model = YOLO(config["target-detect-model-path"])
         self.timeout = config["timeout"]
-        self.delay = 800 // config["plane-camera-fps"]
-        self.showDetect = config["plane-camera-detect-show"]
-        self.size = (config["plane-camera-height"], config["plane-camera-width"])
-        self.targetConfidence = config["target-detect-confidence"]
+        self.threshold = config["threshold"]
+        self.camera = PlaneCamera(config["camera"])
+        self.arucoDetector = ArucoDetector(
+            config["aruco"],
+            numpy.array(config["camera"]["matrix"]),
+            numpy.array(config["camera"]["distortion"])
+        )
+        self.targetDetector = TargetDetector(config["target"])
 
     def StartUp(self):
+        if not self.enabled:
+            return
+
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.client.connect(*self.sshConfig)
         self.sftp = self.client.open_sftp()
@@ -104,9 +104,12 @@ class PlaneController:
         print("[PlaneController] INFO: 服务启动完成.")
 
     def Shutdown(self):
-        self.isClosing = True
+        if not self.enabled:
+            return
+
+        self.targetDetector.Shutdown()
+        self.arucoDetector.Shutdown()
         self.camera.Shutdown()
-        self.controlThread.join()
         if self.sftp:
             self.sftp.close()
         if self.client:
@@ -115,9 +118,12 @@ class PlaneController:
     def ControlPlane(self, command: str):
         self.threadList[4].send(f"rosrun ttauav_node service_client {command} \n".encode('utf-8'))
         result = ""
+        t = time.time()
         while result != "result":
             time.sleep(1)
             result = self.threadList[4].recv(2048).decode('utf-8')[-37:-31]
+            if time.time() - t > self.timeout:
+                raise RuntimeError("[PlaneController] 获取飞机执行命令回执超时.")
         return True
 
     def Takeoff(self):
@@ -125,6 +131,28 @@ class PlaneController:
 
     def Landing(self):
         return self.ControlPlane("2")
+
+    def Move(self, x: float = 0, y: float = 0, z: float = 0):
+        # 单位：m
+        if x != 0.0:
+            self.ControlPlane(f"4 {x / 3} 0 0")
+        if y != 0.0:
+            self.ControlPlane(f"4 0 {y / 3} 0")
+        # if z != 0.0:
+        #     self.ControlPlane(f"4 0 0 {z / 3}")
+
+    def RotateCamera(self, degree: int):
+        return self.ControlPlane(f"5 {degree}")
+
+    def SyncWithCar(self):
+        self.RotateCamera(-90)
+        x, y = (self.threshold + 10, self.threshold + 10)
+        while abs(x) > self.threshold or abs(y) > self.threshold:
+            status, frame = self.camera.GetFrame()
+            _, translationVector = self.arucoDetector.Detect(frame)
+            x, y, _ = translationVector
+            print(x, y, _)
+            self.Move(-y / 100, x / 100)
 
     def DownloadFile(self, remoteFilePath: str, localFilePath: str) -> bool:
         try:
@@ -154,17 +182,3 @@ class PlaneController:
         channel = self.client.invoke_shell()
         self.threadList.append(channel)
         return channel, len(self.threadList) - 1
-
-    def Work(self):
-        self.controlThread.start()
-
-    def Run(self):
-        while not self.isClosing:
-            status, frame = self.camera.GetFrame()
-            if status:
-                results = self.model.predict(frame, verbose=False, conf=self.targetConfidence)
-                annotatedFrame = results[0].plot()
-                if self.showDetect:
-                    cv2.imshow("plane-camera-detect-show", annotatedFrame)
-                    cv2.resizeWindow("plane-camera-detect-show", *self.size)
-                    cv2.waitKey(self.delay)

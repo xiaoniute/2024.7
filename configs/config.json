@@ -1,60 +1,88 @@
 {
-  "timeout": 60,
-  "result-path": "/tta/",
-  "result-name": "list_of_goods.xlsx",
-  "plane-enabled": true,
-  "plane-ip": "192.168.31.46",
-  "plane-port": 22,
-  "plane-username": "root",
-  "plane-password": "123456",
-  "plane-camera-device-id": 1,
-  "plane-camera-show": true,
-  "plane-camera-detect-show": true,
-  "plane-camera-height": 640,
-  "plane-camera-width": 360,
-  "plane-camera-fps": 60,
-  "plane-aruco-size": 0.05,
-  "plane-aruco-show": true,
-  "plane-aruco-id": 114,
-  "plane-aruco-dictionary": "DICT_6X6_250",
-  "plane-camera-matrix": [
-    [
-      1861.62247,
-      0.0,
-      305.037003
-    ],
-    [
-      0.0,
-      695.193604,
-      173.080877
-    ],
-    [
-      0.0,
-      0.0,
-      1.0
-    ]
-  ],
-  "plane-camera-dist-coefficients": [
-    [
-      15.0096121,
-      -1870.11422,
-      0.00870781374,
-      -0.203124224,
-      -22178.2910
-    ]
-  ],
-  "car-enabled": true,
-  "car-ip": "192.168.31.2",
-  "car-port": 22,
-  "car-username": "tta",
-  "car-password": "123456",
-  "car-control-ip": "192.168.42.2",
-  "car-control-port": 40923,
-  "car-route-json": "../configs/car-route.json",
-  "target-detect-model-path": "../models/model.pt",
-  "target-detect-confidence": 0.88,
-  "dataset-config-path": "../datasets/person/person.yaml",
-  "training-epoch": 50,
-  "training-batch": 0.8,
-  "pretraining-model-path": "yolov8m.pt"
+  "drive": {
+    "plane": {
+      "enabled": true,
+      "timeout": 60,
+      "ip": "192.168.31.46",
+      "port": 22,
+      "username": "root",
+      "password": "123456",
+      "threshold": 10.0,
+      "camera": {
+        "show": true,
+        "device-id": 1,
+        "height": 640,
+        "width": 360,
+        "fps": 60,
+        "matrix": [
+          [
+            640.0,
+            0.0,
+            320.0
+          ],
+          [
+            0.0,
+            360.0,
+            180.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "distortion": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      },
+      "aruco": {
+        "show": true,
+        "dictionary": "DICT_6X6_250",
+        "size": 15.4374,
+        "coefficients": [
+          1.4561,
+          0.8267,
+          1
+        ],
+        "id": 114
+      },
+      "target": {
+        "show": true,
+        "model-path": "../models/model.pt",
+        "confidence": 0.88
+      },
+      "result": {
+        "path": "/tta/",
+        "name": "list_of_goods.xlsx"
+      }
+    },
+    "car": {
+      "enabled": false,
+      "ip": "192.168.31.2",
+      "port": 22,
+      "username": "tta",
+      "password": "123456",
+      "route-json": "../configs/car-route.json",
+      "controller": {
+        "ip": "192.168.42.2",
+        "port": 40923
+      },
+      "result": {
+        "path": "/tta/",
+        "name": "list_of_goods.xlsx"
+      }
+    }
+  },
+  "train": {
+    "epoch": 50,
+    "batch": 0.8,
+    "pretrained-model-path": "yolov8m.pt",
+    "dataset-config-path": "../datasets/person/person.yaml"
+  }
 }

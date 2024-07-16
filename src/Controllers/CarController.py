@@ -5,6 +5,7 @@ from Utils.JsonHelper import JsonHelper
 
 # noinspection PyTypeChecker
 class CarController:
+    enabled: bool
     client: paramiko.SSHClient
     sftp: paramiko.SFTPClient
     sshConfig: tuple[str, int, str, str]
@@ -14,26 +15,30 @@ class CarController:
     threadList: list[paramiko.Channel]
 
     def __init__(self, config: dict):
+        self.enabled = config["enabled"]
         self.client = paramiko.SSHClient()
         self.sftp = None
         self.sshConfig = (
-            config["car-ip"],
-            config["car-port"],
-            config["car-username"],
-            config["car-password"]
+            config["ip"],
+            config["port"],
+            config["username"],
+            config["password"]
         )
         self.ControlConfig = (
-            config['car-control-ip'],
-            config['car-control-port']
+            config["controller"]["ip"],
+            config["controller"]["port"]
         )
         self.threadList = []
         self.phase = 0
         self.route = []
-        tmpDict = JsonHelper.LoadDictFromFile(config["car-route-json"])
+        tmpDict = JsonHelper.LoadDictFromFile(config["route-json"])
         for i in range(1, len(tmpDict) + 1):
             self.route.append(tmpDict[str(i)])
 
     def StartUp(self):
+        if not self.enabled:
+            return
+
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.client.connect(*self.sshConfig)
         self.sftp = self.client.open_sftp()
@@ -47,6 +52,9 @@ class CarController:
         print("完成!")
 
     def Shutdown(self):
+        if not self.enabled:
+            return
+
         self.threadList[0].send("exit\n")
         if self.sftp:
             self.sftp.close()

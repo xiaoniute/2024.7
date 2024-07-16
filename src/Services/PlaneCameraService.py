@@ -17,13 +17,13 @@ class PlaneCamera:
 
     def __init__(self, config: dict):
         self.thread = Thread(target=self.Run, daemon=True)
-        self.size = (config["plane-camera-height"], config["plane-camera-width"])
-        self.deviceID = config["plane-camera-device-id"]
+        self.size = (config["height"], config["width"])
+        self.deviceID = config["device-id"]
         self.capture = None
         self.status = False
         self.isClosing = False
-        self.delay = 800 // config["plane-camera-fps"]
-        self.showCamera = config["plane-camera-show"]
+        self.delay = 800 // config["fps"]
+        self.showCamera = config["show"]
         self.que = queue.Queue()
 
     def StartUp(self):
