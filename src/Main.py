@@ -3,7 +3,7 @@ from Utils.JsonHelper import JsonHelper
 
 if __name__ == '__main__':
     config = JsonHelper.LoadDictFromFile("../configs/config.json")
-    systemController = SystemController(config)
+    systemController = SystemController(config["drive"])
     systemController.StartUp()
     while True:
         command = input("> ")

@@ -6,6 +6,7 @@ import json
 
 # noinspection PyTypeChecker
 class CarController:
+    enabled: bool
     client: paramiko.SSHClient
     sftp: paramiko.SFTPClient
     sshConfig: tuple[str, int, str, str]
@@ -15,29 +16,32 @@ class CarController:
     threadList: list[paramiko.Channel]
 
     def __init__(self, config: dict):
+        self.enabled = config["enabled"]
         self.client = paramiko.SSHClient()
         self.sftp = None
         self.sshConfig = (
-            config["car-ip"],
-            config["car-port"],
-            config["car-username"],
-            config["car-password"]
+            config["ip"],
+            config["port"],
+            config["username"],
+            config["password"]
         )
         self.ControlConfig = (
-            config['car-control-ip'],
-            config['car-control-port'],
+            config["controller"]["ip"],
+            config["controller"]["port"],
             config['car-x-offset'],
             config['car-y-offset']
         )
         self.threadList = []
         self.phase = 0
         self.route = []
-        with open(r"D:\2024.7\configs\car-route.json", "r") as f:
-            tmpDict = json.load(f)
+        tmpDict = JsonHelper.LoadDictFromFile(config["route-json"])
         for i in range(1, len(tmpDict) + 1):
             self.route.append(tmpDict[str(i)])
         self.timeout = config["timeout"]
     def StartUp(self):
+        if not self.enabled:
+            return
+
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.client.connect(*self.sshConfig)
         self.sftp = self.client.open_sftp()

@@ -1,48 +1,38 @@
 from Controllers.CarController import CarController
 from Controllers.PlaneController import PlaneController
+from Entities.RoomManager import RoomManager
 
 
 class SystemController:
-    enableCar: bool
-    enablePlane: bool
     car: CarController
     plane: PlaneController
+    roomManager: RoomManager
+    roomIdList: list
 
     def __init__(self, config: dict):
-        self.enableCar = config["car-enabled"]
-        self.enablePlane = config["plane-enabled"]
-        self.car = CarController(config)
-        self.plane = PlaneController(config)
+        self.car = CarController(config["car"])
+        self.plane = PlaneController(config["plane"])
+        self.roomManager = RoomManager()
+        self.roomIdList = [] # This should be modified
 
     def StartUp(self):
-        if self.enableCar:
-            self.car.StartUp()
-        if self.enablePlane:
-            self.plane.StartUp()
+        self.car.StartUp()
+        self.plane.StartUp()
 
     def Shutdown(self):
-        if self.enablePlane:
-            self.plane.Shutdown()
-        if self.enableCar:
-            self.car.Shutdown()
+        self.plane.Shutdown()
+        self.car.Shutdown()
 
     def ExecuteCommand(self, command: str) -> bool:
-        argv = command.split(" ")
-        if argv[0] == "work":
-            self.plane.Work()
-        elif argv[0] == "takeoff":
-            if self.plane.Takeoff():
-                print("Takeoff succeeded.")
-                return True
-            else:
-                print("Takeoff failed.")
-                return False
-        elif argv[0] == "landing":
-            if self.plane.Landing():
-                print("Landing succeeded.")
-                return True
-            else:
-                print("Landing failed.")
-                return False
-        elif argv[0] == 'next':
-            self.car.NextPoint()
+        try:
+            eval(command)
+        except Exception as e:
+            print(e)
+        return True
+    
+    def Output(self):
+        for roomID in self.roomIdList:
+            answer = self.plane.GetAnswer()
+            self.roomManager.SetRoomData(roomID, answer[0], answer[1])
+            result = self.roomManager.ToDict()
+            #transform the result to excel form.
