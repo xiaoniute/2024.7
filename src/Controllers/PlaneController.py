@@ -1,15 +1,16 @@
-import time
 from typing import Union
+from Services.PlaneCameraService import PlaneCamera
+from Entities.ArucoDetector import ArucoDetector
+from Entities.TargetDetector import TargetDetector
+from Utils.MathHelper import MathHelper
 import queue
 from collections import Counter
 
 import numpy as np
 import math
 import paramiko
-from Services.PlaneCameraService import PlaneCamera
-from Entities.ArucoDetector import ArucoDetector
-from Entities.TargetDetector import TargetDetector
-from Entities.RoomManager import RoomManager
+import time
+
 
 class PlaneController:
     enabled: bool
@@ -19,9 +20,11 @@ class PlaneController:
     threadList: list[paramiko.Channel]
     timeout: int
     threshold: dict[str, float]
+    move: dict[str, float]
+    rotate: dict[str, float]
     curYaw: float
-    moveFactor: float
     delay: float
+    eps: float
     camera: PlaneCamera
     arucoDetector: ArucoDetector
     targetDetector: TargetDetector
@@ -39,9 +42,11 @@ class PlaneController:
         self.threadList = []
         self.timeout = config["timeout"]
         self.threshold = config["threshold"]
+        self.move = config["move"]
+        self.rotate = config["rotate"]
         self.curYaw = 0.
-        self.moveFactor = config["move-factor"]
         self.delay = config["delay"]
+        self.eps = config["eps"]
         self.camera = PlaneCamera(config["camera"])
         self.arucoDetector = ArucoDetector(
             config["aruco"],
@@ -54,9 +59,8 @@ class PlaneController:
         self.FrameQueue = queue.Queue()
         self.RecordQueue = queue.Queue()
         # the para below should be written into config
-        self.size = 60 
+        self.size = 60
         self.confidence = 0.88
-
 
     def StartUp(self):
         if not self.enabled:
@@ -143,54 +147,66 @@ class PlaneController:
             if time.time() - t > self.timeout:
                 raise RuntimeError("[PlaneController] 获取飞机执行命令回执超时.")
         time.sleep(self.delay)
-        return True
 
     def Takeoff(self):
         self.ControlPlane("1")
-        self.Rotate(0)
+        self.ResetAngle()
 
     def Landing(self):
-        return self.ControlPlane("2")
+        self.ControlPlane("2")
 
     def Rotate(self, degree: float = 0):
-        yawThreshold = self.threshold["yaw"]
-        posThreshold = self.threshold["pos"]
-        self.curYaw = degree
-        self.ControlPlane(f"3 {degree} 0 0 0 {yawThreshold} {posThreshold}")
+        if abs(degree) < self.threshold["rotation"]:
+            return
+        value = MathHelper.SignOf(degree) * (abs(degree) - self.rotate["b"])
+        rotateSpeed = MathHelper.SignOf(value) * self.rotate["speed"]
+        rotateTime = abs(value / rotateSpeed * 1000)
+        rotateTime = int(rotateTime)
+        self.ControlPlane(f"4 {rotateSpeed} 0 0 0 {rotateTime}")
+        time.sleep(rotateTime / 1000)
 
-    def MoveOneStep(self, way: str, tim: float):
-        print(f"[MoveOneStep] way={way} tim={tim}")
-        speed = self.moveFactor
-        if tim < 0:
-            tim = -tim
-            speed = -speed
-        tim = int(tim)
-        if way == "x":
-            self.ControlPlane(f"4 0 {speed} 0 0 {tim}")
-        elif way == "y":
-            self.ControlPlane(f"4 0 0 {speed} 0 {tim}")
-        elif way == "z":
-            self.ControlPlane(f"4 0 0 0 {speed} {tim}")
-        time.sleep(tim / 1000)
+    def ResetAngle(self):
+        self.ControlPlane(f"3 0 0 0 0 0 0")
+        self.curYaw = 0
 
-    def Move(self, x: float = 0, y: float = 0, z: float = 0):
+    def Move(self, speed: float, x: float = 0, y: float = 0):
         # 单位：m
-        if False:
-            x, y, z = x / self.moveFactor, y / self.moveFactor, z * self.moveFactor
         deg = math.radians(self.curYaw)
-        print(f"[Move] x'={x} y'={y}")
-        if abs(x) > 1e-3:
-            x_, y_ = x * math.cos(deg), x * math.sin(deg)
-            print(f"[Move] x = {x_} y={y_}")
-            self.MoveOneStep("x", x_ / self.moveFactor * 1000)
-            self.MoveOneStep("y", y_ / self.moveFactor * 1000)
-        if abs(y) > 1e-3:
-            x_, y_ = -y * math.sin(deg), y * math.cos(deg)
-            print(f"[Move] x = {x_} y={y_}")
-            self.MoveOneStep("x", x_ / self.moveFactor * 1000)
-            self.MoveOneStep("y", y_ / self.moveFactor * 1000)
-        if abs(z) > 1e-3:
-            self.MoveOneStep("z", z / self.moveFactor * 1000)
+        x, y = MathHelper.RotateAxis(x, y, deg)
+        x, y = round(x, 2), round(y, 2)
+        if MathHelper.CalculateDistance(x, y, 0, 0) < self.eps:
+            return
+        if abs(x) < self.eps:
+            # 只移动 y 方向
+            speedX = 0
+            speedY = speed * MathHelper.SignOf(y)
+            moveTime = y / speedY * 1000
+        elif abs(y) < self.eps:
+            # 只移动 x 方向
+            speedX = speed * MathHelper.SignOf(x)
+            speedY = 0
+            moveTime = x / speedX * 1000
+        else:
+            radio = y / x
+            if abs(radio) > 1:
+                # y 方向最高速度
+                speedY = speed * MathHelper.SignOf(y)
+                speedX = speedY / radio
+                moveTime = y / speedY * 1000
+            else:
+                speedX = speed * MathHelper.SignOf(x)
+                speedY = speedX * radio
+                moveTime = x / speedX * 1000
+        speedX, speedY, moveTime = round(speedX, 2), round(speedY, 2), int(moveTime)
+        self.ControlPlane(f"4 0 {speedX:.2f} {speedY:.2f} 0 {moveTime}")
+        time.sleep(moveTime / 1000)
+
+    def MoveHeight(self, speed: float, z: float):
+        if z < 0:
+            speed = -speed
+        moveTime = int(z / speed * 1000)
+        self.ControlPlane(f"4 0 0 0 {speed} {moveTime}")
+        time.sleep(moveTime / 1000)
 
     def RotateCamera(self, pitch: int = 0, roll: int = 0, yaw: int = 0):
         return self.ControlPlane(f"5 {pitch} {roll} {yaw}")
@@ -224,52 +240,81 @@ class PlaneController:
         self.threadList.append(channel)
         return channel, len(self.threadList) - 1
 
-    def FollowCar(self, targetHeight: float = 0):
+    def SyncWithCar(self, isLanding: bool):
         # 单位 : m
-        self.RotateCamera(-90, 0, 0)
-        status, frame = self.camera.GetFrame()
-        if status:
-            rotationAngle, translationVector = self.arucoDetector.Detect(frame)
-            x, y, _ = translationVector
-            x, y = -y, x
-            self.curYaw = self.curYaw + rotationAngle
+        def SyncPos(threshold: float, speed: float, failTime: int = 60) -> bool:
+            # 同步位置
+            while True:
+                status, frame = self.camera.GetFrame()
+                if not status:
+                    failTime -= 1
+                    if failTime <= 0:
+                        print("[PlaneController][ERROR] 与小车同步位置失败.")
+                        return False
+                    continue
+                _, translationVector = self.arucoDetector.Detect(frame)
+                x, y, _ = translationVector
+                x, y = MathHelper.RotateAxis(x, y, math.pi / 2)
+                if MathHelper.CalculateDistance(x, y, 0, 0) < threshold:
+                    print("[PlaneController] 位置同步完成.")
+                    return True
+                self.Move(speed, x=x, y=y)
+
+        def SyncYaw(failTime: int = 60) -> bool:
+            # 同步角度
+            while True:
+                status, frame = self.camera.GetFrame()
+                if status:
+                    break
+                failTime -= 1
+                if failTime <= 0:
+                    print("[PlaneController][ERROR] 与小车同步角度失败.")
+                    return False
+            rotationYaw, _ = self.arucoDetector.Detect(frame)
+            self.Rotate(rotationYaw)
+            self.curYaw = self.curYaw + rotationYaw
             if self.curYaw > 180:
                 self.curYaw = self.curYaw - 360
             if self.curYaw <= -180:
                 self.curYaw = self.curYaw + 360
-            self.Rotate(self.curYaw)
-            while abs(x) > self.threshold["relative"] or abs(y) > self.threshold["relative"]:
-                while abs(x) > self.threshold["relative"]:
-                    self.Move(x=x)
-                    status, frame = self.camera.GetFrame()
-                    _, translationVector = self.arucoDetector.Detect(frame)
-                    x, y, _ = translationVector
-                    x, y = -y, x
-                while abs(y) > self.threshold["relative"]:
-                    self.Move(y=y)
-                    status, frame = self.camera.GetFrame()
-                    _, translationVector = self.arucoDetector.Detect(frame)
-                    x, y, _ = translationVector
-                    x, y = -y, x
+            print("[PlaneController] 角度同步完成.")
+            return True
 
-            if abs(targetHeight) > 1e-3:
-                _, translationVector = self.arucoDetector.Detect(frame)
-                _, _, z = translationVector
-                while abs(z - targetHeight) > self.threshold["relative"]:
-                    status, frame = self.camera.GetFrame()
-                    _, translationVector = self.arucoDetector.Detect(frame)
-                    _, _, z = translationVector
-                    self.Move(z=z - targetHeight)
+        self.RotateCamera(-90)
+        SyncPos(self.threshold["relative"], self.move["speed"])
+        SyncYaw()
+        if isLanding:
+            SyncPos(self.threshold["landing"], self.move["slow-speed"])
+            self.Landing()
 
-            self.RotateCamera(90, 0, 0)
-    
-    def GetAnswer(self) -> tuple[int,int]:
-        # The function returns a tuple whose first element is number of good person and the second is number of bad person.
-        while(self.FrameQueue.qsize() < self.size):
+    def SyncHeight(self, targetHeight: float):
+        self.RotateCamera(-90)
+        failTime = 60
+        while True:
+            status, frame = self.camera.GetFrame()
+            if not status:
+                failTime -= 1
+                if failTime <= 0:
+                    print("[PlaneController][ERROR] 与小车同步高度失败.")
+                    return False
+                continue
+            _, translationVector = self.arucoDetector.Detect(frame)
+            _, _, z = translationVector
+            if abs(targetHeight - z) < self.threshold["height"]:
+                print("[PlaneController] 高度同步完成.")
+                return True
+            self.MoveHeight(self.move["speed"], targetHeight - z)
+
+    def GetAnswer(self) -> tuple[int, int]:
+        """
+        The function returns a tuple whose first element is number of good person and the second is number of bad person.
+        :return:
+        """
+        while self.FrameQueue.qsize() < self.size:
             bad_num = 0
             good_num = 0
-            flag,frame = PlaneCamera.GetFrame()
-        
+            flag, frame = PlaneCamera.GetFrame()
+
             if flag:
                 result = TargetDetector.Detect(frame)
                 res = result[0].summary()
@@ -278,21 +323,21 @@ class PlaneController:
                         bad_num += 1
                     if target['class'] == 0:
                         good_num += 1
-                recorder = (good_num,bad_num)
+                recorder = (good_num, bad_num)
                 if good_num + bad_num <= 4:
                     self.FrameQueue.put(frame)
                     self.RecordQueue.put(recorder)
             else:
                 print("Can't correctly get frames. Retrying...")
-        
+
         for _ in range(self.size):
             record = self.RecordQueue.get()
             self.RecordList.append(record)
 
-        element_counts =Counter(self.RecordList)
+        element_counts = Counter(self.RecordList)
         max_key = max(element_counts, key=element_counts.get)
         rate = element_counts[max_key] / len(self.RecordList)
-        
+
         if rate >= self.confidence:
             return max_key
         else:
@@ -300,8 +345,3 @@ class PlaneController:
             self.RecordList = []
             self.RecordQueue.get()
             return self.GetAnswer()
-            
-
-
-        
-            

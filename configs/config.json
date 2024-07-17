@@ -7,13 +7,25 @@
       "port": 22,
       "username": "root",
       "password": "123456",
-      "move-factor": 0.2,
-      "delay": 5,
       "threshold": {
-        "yaw": 0,
-        "pos": 0,
-        "relative": 0.05
+        "relative": 0.1,
+        "landing": 0.1,
+        "rotation": 10,
+        "height": 0.1
       },
+      "move": {
+        "speed": 0.2,
+        "slow-speed": 0.1,
+        "a": 1,
+        "b": 0
+      },
+      "rotate": {
+        "speed": 30,
+        "a": 1,
+        "b": -3
+      },
+      "delay": 5,
+      "eps": 1e-3,
       "camera": {
         "show": true,
         "device-id": 1,
