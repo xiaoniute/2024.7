@@ -28,8 +28,8 @@ class CarController:
         self.ControlConfig = (
             config["controller"]["ip"],
             config["controller"]["port"],
-            config['car-x-offset'],
-            config['car-y-offset']
+            config["controller"]["x-offset"],
+            config["controller"]["y-offset"]
         )
         self.threadList = []
         self.phase = 0

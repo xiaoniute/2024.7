@@ -89,7 +89,9 @@
       "route-json": "../configs/car-route.json",
       "controller": {
         "ip": "192.168.42.2",
-        "port": 40923
+        "port": 40923,
+        "x-offset": 0.039,
+        "y-offset": 0.039
       },
       "result": {
         "path": "/tta/",
