@@ -9,7 +9,7 @@ import paramiko
 from Services.PlaneCameraService import PlaneCamera
 from Entities.ArucoDetector import ArucoDetector
 from Entities.TargetDetector import TargetDetector
-
+from Entities.RoomManager import RoomManager
 
 class PlaneController:
     enabled: bool
@@ -263,7 +263,8 @@ class PlaneController:
 
             self.RotateCamera(90, 0, 0)
     
-    def GetAnswer(self):
+    def GetAnswer(self) -> tuple[int,int]:
+        # The function returns a tuple whose first element is number of good person and the second is number of bad person.
         while(self.FrameQueue.qsize() < self.size):
             bad_num = 0
             good_num = 0
@@ -291,6 +292,7 @@ class PlaneController:
         element_counts =Counter(self.RecordList)
         max_key = max(element_counts, key=element_counts.get)
         rate = element_counts[max_key] / len(self.RecordList)
+        
         if rate >= self.confidence:
             return max_key
         else:
