@@ -75,6 +75,7 @@
         "model-path": "../models/model.pt",
         "confidence": 0.88
       },
+      "confidence":0.88,
       "result": {
         "path": "/tta/",
         "name": "list_of_goods.xlsx"

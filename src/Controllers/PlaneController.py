@@ -60,7 +60,7 @@ class PlaneController:
         self.RecordQueue = queue.Queue()
         # the para below should be written into config
         self.size = 60
-        self.confidence = 0.88
+        self.confidence = config["confidence"]
 
     def StartUp(self):
         if not self.enabled:
