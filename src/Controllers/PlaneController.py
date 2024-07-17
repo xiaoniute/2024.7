@@ -1,5 +1,7 @@
 import time
 from typing import Union
+import queue
+from collections import Counter
 
 import numpy as np
 import math
@@ -7,7 +9,7 @@ import paramiko
 from Services.PlaneCameraService import PlaneCamera
 from Entities.ArucoDetector import ArucoDetector
 from Entities.TargetDetector import TargetDetector
-
+from Entities.RoomManager import RoomManager
 
 class PlaneController:
     enabled: bool
@@ -47,6 +49,14 @@ class PlaneController:
             np.array(config["camera"]["distortion"])
         )
         self.targetDetector = TargetDetector(config["target"])
+        # the parameter below is newly added
+        self.RecordList = []
+        self.FrameQueue = queue.Queue()
+        self.RecordQueue = queue.Queue()
+        # the para below should be written into config
+        self.size = 60 
+        self.confidence = 0.88
+
 
     def StartUp(self):
         if not self.enabled:
@@ -252,3 +262,46 @@ class PlaneController:
                     self.Move(z=z - targetHeight)
 
             self.RotateCamera(90, 0, 0)
+    
+    def GetAnswer(self) -> tuple[int,int]:
+        # The function returns a tuple whose first element is number of good person and the second is number of bad person.
+        while(self.FrameQueue.qsize() < self.size):
+            bad_num = 0
+            good_num = 0
+            flag,frame = PlaneCamera.GetFrame()
+        
+            if flag:
+                result = TargetDetector.Detect(frame)
+                res = result[0].summary()
+                for target in res:
+                    if target['class'] == 1:
+                        bad_num += 1
+                    if target['class'] == 0:
+                        good_num += 1
+                recorder = (good_num,bad_num)
+                if good_num + bad_num <= 4:
+                    self.FrameQueue.put(frame)
+                    self.RecordQueue.put(recorder)
+            else:
+                print("Can't correctly get frames. Retrying...")
+        
+        for _ in range(self.size):
+            record = self.RecordQueue.get()
+            self.RecordList.append(record)
+
+        element_counts =Counter(self.RecordList)
+        max_key = max(element_counts, key=element_counts.get)
+        rate = element_counts[max_key] / len(self.RecordList)
+        
+        if rate >= self.confidence:
+            return max_key
+        else:
+            self.FrameQueue.get()
+            self.RecordList = []
+            self.RecordQueue.get()
+            return self.GetAnswer()
+            
+
+
+        
+            

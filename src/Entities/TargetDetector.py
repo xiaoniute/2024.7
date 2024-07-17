@@ -20,6 +20,7 @@ class TargetDetector:
             cv2.waitKey(1)
         return results
 
+
     def Shutdown(self):
         if self.showDetect:
             cv2.destroyWindow("plane-camera-detect-show")
