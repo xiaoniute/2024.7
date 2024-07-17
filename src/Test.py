@@ -82,15 +82,23 @@ def CarControllerTest():
     from Controllers.CarController import CarController
     import json
 
-    with open(r"D:\2024.7\src\config.json", "r") as f:
+    with open(r"D:\2024.7\configs\config.json", "r") as f:
         config = json.load(f)
     carController = CarController(config)
     carController.StartUp()
+    while True:
+        command = input("> ")
+        if command == "exit":
+            break
+        if command == "next":
+            carController.NextPoint()
+        #carController.ExecuteCommand(command)
+    carController.Shutdown()
 
 
 if __name__ == "__main__":
     # RoomManagerAndResultWriterTest()
     # ConfigHelperTest()
     # PlaneControllerTest()
-    # CarControllerTest()
-    ModelTest()
+    CarControllerTest()
+    # ModelTest()

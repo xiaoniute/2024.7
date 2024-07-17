@@ -1,6 +1,7 @@
 import paramiko
 import time
 from Utils.JsonHelper import JsonHelper
+import json
 
 
 # noinspection PyTypeChecker
@@ -24,45 +25,70 @@ class CarController:
         )
         self.ControlConfig = (
             config['car-control-ip'],
-            config['car-control-port']
+            config['car-control-port'],
+            config['car-x-offset'],
+            config['car-y-offset']
         )
         self.threadList = []
         self.phase = 0
         self.route = []
-        tmpDict = JsonHelper.LoadDictFromFile(config["car-route-json"])
+        with open(r"D:\2024.7\configs\car-route.json", "r") as f:
+            tmpDict = json.load(f)
         for i in range(1, len(tmpDict) + 1):
             self.route.append(tmpDict[str(i)])
-
+        self.timeout = config["timeout"]
     def StartUp(self):
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.client.connect(*self.sshConfig)
         self.sftp = self.client.open_sftp()
 
         # 启动后台进程
+        print("[CarController] INFO: ROS Core 启动中...", end='')
+        thread, _ = self.CreateThread()
+        thread.send("cd /home/tta/catkin_ws/ "
+                    "&& source ./devel/setup.bash "
+                    "&& roscore \n".encode('utf-8'))       # 进程1: ROS 环境
+        t = time.time()
+        while True:
+            time.sleep(1)
+            result = thread.recv(128).decode('utf-8')[-11:-2]
+            if result == "[/rosout]":
+                break
+            if time.time() - t > self.timeout:
+                raise RuntimeError("[PlaneController] 启动ROS Core超时.")
+        print("完成!")
+
+        print("[CarController] INFO: ROS 雷达节点启动中...", end='')
+        thread, _ = self.CreateThread()
+        thread.send("cd /home/tta/catkin_ws/ "
+                    "&& source ./devel/setup.bash "
+                    "&& roslaunch lslidar_driver lslidar_net.launch \n".encode('utf-8'))  # 进程2: ROS 飞机数据节点
+        print("完成!")
+
         print("[CarController] INFO: RobomasterSDK 启动中...", end='')
         thread, _ = self.CreateThread()
-        thread.send("cd /home/tta/Documents/ && "
-                    "python ./CarControlService.py "
-                    "{} {} \n".format(*self.ControlConfig))  # 进程1: 连接车辆控制服务
+        thread.send("cd /home/tta/catkin_ws/src/lidar_pkg/scripts && "
+                    "rosrun lidar_pkg CarControlService.py "
+                    "{} {} {} {}\n".format(*self.ControlConfig))  # 进程3: 连接车辆控制服务
         print("完成!")
 
     def Shutdown(self):
-        self.threadList[0].send("exit\n")
+        self.threadList[2].send("exit\n")
         if self.sftp:
             self.sftp.close()
         if self.client:
             self.client.close()
 
     def ExecuteCommand(self, command: str):
-        self.threadList[0].send(command)
+        self.threadList[2].send(command)
         result = ""
         while result != '[OK]':
             time.sleep(1)
-            result = self.threadList[0].recv(2048).decode('utf-8')[-6:-2]
+            result = self.threadList[2].recv(2048).decode('utf-8')[-6:-2]
         return True
 
-    def Move(self, x: float = 0, y: float = 0, z: float = 0):
-        self.ExecuteCommand(f"chassis move x {x} y {y} z {z};\n")
+    def Move(self, x: float = 0, y: float = 0):
+        self.ExecuteCommand(f"{x} {y}\n")
 
     def NextPoint(self) -> bool:
         if self.phase >= len(self.route):
