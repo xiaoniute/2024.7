@@ -7,25 +7,25 @@ import numpy as np
 
 
 class ArucoDetector:
-    cameraMatrix: np.array
-    distortion: np.array
+    showResult: bool
     detector: cv2.aruco.ArucoDetector
+    markerSize: float
     coefficients: list[float]
     targetID: int
-    showResult: bool
-    markerSize: float
+    cameraMatrix: np.array
+    distortion: np.array
 
     def __init__(self, config: dict, cameraMatrix: np.array, distortion: np.array):
-        self.cameraMatrix = cameraMatrix
-        self.distortion = distortion
+        self.showResult = config["show"]
         self.detector = cv2.aruco.ArucoDetector(
             cv2.aruco.getPredefinedDictionary(eval(f"cv2.aruco.{config['dictionary']}")),
             cv2.aruco.DetectorParameters()
         )
         self.markerSize = config["size"]
-        self.targetID = config["id"]
-        self.showResult = config["show"]
         self.coefficients = config["coefficients"]
+        self.targetID = config["id"]
+        self.cameraMatrix = cameraMatrix
+        self.distortion = distortion
 
     def Detect(self, image: cv2.Mat) -> Union[tuple[Union[np.ndarray, Any], Union[np.ndarray, Any]], tuple[None, None]]:
         """
@@ -56,17 +56,21 @@ class ArucoDetector:
                 translationVector = [
                     (translationVector[i] * self.coefficients[i] * 0.01)[0] for i in range(len(translationVector))
                 ]
-                print(corners[i][0])
+                # print(corners[i][0])
                 if success:
                     if self.showResult:
                         img = cv2.aruco.drawDetectedMarkers(image, corners)
                         cv2.imshow("plane-aruco-show", img)
                         cv2.waitKey(1)
-                    print(f"INFO: ArucoDetector:{rotationAngle},{translationVector}")
+                    # print(f"INFO: ArucoDetector:{rotationAngle},{translationVector}")
                     return rotationAngle, translationVector
                 else:
                     return None, None
+        return None, None
 
-    def Shutdown(self):
+    def Shutdown(self) -> None:
         if self.showResult:
-            cv2.destroyWindow("plane-aruco-show")
+            try:
+                cv2.destroyWindow("plane-aruco-show")
+            except Exception as e:
+                print(e)

@@ -35,7 +35,7 @@ class MathHelper:
         return (angle1 + angle2 + angle3 + angle4) / 4
 
     @staticmethod
-    def RotateAxis(x: float, y: float, angle: float):
+    def RotateAxis(x: float, y: float, angle: float) -> tuple[float, float]:
         """
         旋转坐标系
         :param x: 原坐标系中的x坐标
@@ -61,12 +61,11 @@ class MathHelper:
         return 0
 
     @staticmethod
-    def ResolveLinearEquation(a: float, b: float, c: float):
-        """
-        Resolve equation like ax+b=c
-        :param a:
-        :param b:
-        :param c:
-        :return: x
-        """
-        return (c - b) / a
+    def Standardize(x: float, y: float, z: float, standard: float = 1) -> tuple[float, float, float, float]:
+        lth = (x ** 2 + y ** 2 + z ** 2) ** 0.5
+        if abs(standard) < 1e-7:
+            return 0, 0, 0, lth
+        if lth < 1e-7:
+            return 0, 0, 0, 0
+        rate = standard / lth
+        return x * rate, y * rate, z * rate, lth

@@ -5,32 +5,31 @@ from threading import Thread
 
 
 class PlaneCamera:
-    thread: Thread
-    size: tuple[int, int]
+    showCamera: bool
     deviceID: int
+    size: tuple[int, int]
+    delay: int
+    thread: Thread
     capture: Union[cv2.VideoCapture, None]
     status: bool
     isClosing: bool
-    delay: int
-    showCamera: bool
     que: queue.Queue[cv2.Mat]
 
     def __init__(self, config: dict):
-        self.thread = Thread(target=self.Run, daemon=True)
-        self.size = (config["height"], config["width"])
-        self.deviceID = config["device-id"]
-        self.capture = None
-        self.status = False
-        self.isClosing = False
-        self.delay = 800 // config["fps"]
         self.showCamera = config["show"]
+        self.deviceID = config["device-id"]
+        self.size = (config["height"], config["width"])
+        self.delay = 800 // config["fps"]
+        self.thread = Thread(target=self.Run, daemon=True)
+        self.capture = None
+        self.status = self.isClosing = False
         self.que = queue.Queue()
 
-    def StartUp(self):
+    def StartUp(self) -> None:
         self.capture = cv2.VideoCapture(self.deviceID, cv2.CAP_DSHOW)
         self.thread.start()
 
-    def Run(self):
+    def Run(self) -> None:
         while not self.isClosing:
             self.status, fr = self.capture.read()
             if not self.que.empty():
@@ -46,7 +45,7 @@ class PlaneCamera:
                     cv2.resizeWindow("plane-camera-show", *self.size)
                     cv2.waitKey(self.delay)
 
-    def Shutdown(self):
+    def Shutdown(self) -> None:
         self.isClosing = True
         self.status = False
         self.thread.join()
