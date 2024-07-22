@@ -80,6 +80,7 @@ class CarController:
         while '[OK]' not in result:
             time.sleep(1)
             result = self.threadList[2].recv(2048).decode('utf-8')
+            # print(result)
 
     def Move(self, x: float = 0, y: float = 0) -> None:
         self.ExecuteCommand(f"{x} {y}\n")

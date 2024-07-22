@@ -1,6 +1,7 @@
 {
   "drive": {
     "command-config": "../configs/command-sequence.json",
+    "result-path": "/tta/list_of_goods.xlsx",
     "plane": {
       "enabled": true,
       "ip": "192.168.31.46",
@@ -14,7 +15,7 @@
       },
       "speed": {
         "move": 0.2,
-        "rotate": 30
+        "rotate": 45
       },
       "delay": 0.5,
       "answer-size": 60,

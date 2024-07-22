@@ -8,5 +8,6 @@ if __name__ == "__main__":
         data=config["dataset-config-path"],
         epochs=config["epoch"],
         batch=config["batch"],
-        amp=False
+        amp=False,
+        val=True
     )

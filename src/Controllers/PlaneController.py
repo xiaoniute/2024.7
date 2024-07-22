@@ -167,7 +167,7 @@ class PlaneController:
     def Landing(self, syncWithCar: bool = True) -> None:
         time.sleep(2)
         if syncWithCar:
-            self.SyncWithCar(syncTime=2, syncYaw=True, syncHeight=1)
+            self.SyncWithCar(syncYaw=True, syncHeight=1)
             self.SyncWithCar(syncYaw=False, syncHeight=0.5)
         self.ControlPlane("2")
         time.sleep(5)
@@ -175,12 +175,12 @@ class PlaneController:
     def Rotate(self, degree: float = 0) -> None:
         if abs(degree) < self.threshold["rotation"]:
             return
-        value = MathHelper.SignOf(degree) * (abs(degree) - 3)
+        value = degree
         rotateSpeed = MathHelper.SignOf(value) * self.speed["rotate"]
         rotateTime = abs(value / rotateSpeed * 1000)
         while rotateTime < 1000:
-            rotateSpeed, rotateTime = rotateSpeed / 8, rotateTime * 8
-        rotateTime = int(rotateTime)
+            rotateSpeed, rotateTime = rotateSpeed / 2, rotateTime * 2
+        rotateTime = int(rotateTime * 1.5)
         self.ControlPlane(f"4 {rotateSpeed} 0 0 0 {rotateTime}")
         time.sleep(rotateTime / 1000)
 
@@ -194,7 +194,7 @@ class PlaneController:
             speedX, speedY, speedZ, distance = MathHelper.Standardize(x, y, z, speed)
             moveTime = distance / speed * 1000
             while moveTime < 1000:
-                speedX, speedY, speedZ, moveTime = speedX / 8, speedY / 8, speedZ / 8, moveTime * 8
+                speedX, speedY, speedZ, moveTime = speedX / 2, speedY / 2, speedZ / 2, moveTime * 2
             self.ControlPlane(f"4 0 {speedX:.2f} {speedY:.2f} {speedZ:.2f} {moveTime:.0f}")
             time.sleep(moveTime / 1000)
 
@@ -210,12 +210,15 @@ class PlaneController:
             return False
 
     def UploadFile(self, localFilePath: str, remoteFilePath: str) -> bool:
-        try:
-            self.sftp.put(localFilePath, remoteFilePath)
+        if self.enabled:
+            try:
+                self.sftp.put(localFilePath, remoteFilePath)
+                return True
+            except Exception as e:
+                print(e)
+                return False
+        else:
             return True
-        except Exception as e:
-            print(e)
-            return False
 
     def ExecuteCommand(self, command: str) -> str:
         try:
@@ -265,11 +268,6 @@ class PlaneController:
                     self.TryFindCar()
                     frame = self.GetFrame()
                     rotationYaw, _ = self.arucoDetector.Detect(frame)
-                self.curYaw = self.curYaw + rotationYaw
-                if self.curYaw > 180:
-                    self.curYaw = self.curYaw - 360
-                if self.curYaw <= -180:
-                    self.curYaw = self.curYaw + 360
                 if abs(rotationYaw) < self.threshold["rotation"]:
                     print("[PlaneController:INFO] : 角度同步完成.")
                     return
